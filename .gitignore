@@ -1,0 +1,18 @@
+# Data files
+*.h5ad
+*.npy
+*.csv
+
+# Output files
+dissimilarity_matrices/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# System
+.DS_Store
+*~
