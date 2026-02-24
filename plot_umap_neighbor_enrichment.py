@@ -1,17 +1,19 @@
 """
-viz_umap_neighbor_enrichment.py
+plot_umap_neighbor_enrichment.py
 
 For a given cell type and region, plots UMAP colored by:
 1. Per-cell lochNESS score (within-donor neighbor enrichment)
-2. Per-cell mean neighbor age deviation (|age_cell - mean_age_neighbors|)
+2. Per-cell age deviation (|own age - mean neighbor age|)
+3. Cell age
 
-One figure per louvain cluster, side by side.
+One figure per louvain cluster with three panels side by side.
 
 Usage:
-    python viz_umap_neighbor_enrichment.py --cell_type GABAergic-neurons --region HIP
+    python plot_umap_neighbor_enrichment.py --cell_type GABAergic-neurons --region HIP
 """
 
 import argparse
+import os
 import h5py
 import numpy as np
 import pandas as pd
@@ -29,25 +31,33 @@ CELL_TYPE_FILES = {
     'ependymal-cells':        'Res1_ependymal-cells_new.h5ad',
 }
 FILTER_MAP = {
-    'opc':            ('cell_class_annotation', 'oligodendrocyte precursor cells'),
+    'opc':              ('cell_class_annotation', 'oligodendrocyte precursor cells'),
     'oligodendrocytes': ('cell_class_annotation', 'oligodendrocytes'),
 }
 DATA_DIR = '/data/CEM/smacklab/U01/'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--cell_type', default='GABAergic-neurons', choices=CELL_TYPE_FILES.keys())
-parser.add_argument('--region',    default='HIP')
+parser.add_argument('--cell_type', required=True, choices=CELL_TYPE_FILES.keys())
+parser.add_argument('--region',    required=True)
 parser.add_argument('--min_cells', type=int,   default=100)
 parser.add_argument('--min_age',   type=float, default=1.0)
+parser.add_argument('--indir',     default='/scratch/easmit31/factor_analysis/neighbor_enrichment/')
 parser.add_argument('--outdir',    default='/scratch/easmit31/factor_analysis/neighbor_enrichment/')
 args = parser.parse_args()
 
-import os
 os.makedirs(args.outdir, exist_ok=True)
 
 def decode_categorical(grp):
+    """Decode h5py categorical (categories + codes) to numpy string array."""
     categories = np.array([x.decode() if isinstance(x, bytes) else str(x) for x in grp['categories'][:]])
     return categories[grp['codes'][:]]
+
+# load summary to know which louvains to plot
+summary = pd.read_csv(f'{args.indir}{args.cell_type}_neighbor_enrichment_summary.csv')
+summary = summary[summary['region'] == args.region]
+if summary.empty:
+    print(f"No results for {args.cell_type} {args.region}")
+    exit()
 
 fpath = DATA_DIR + CELL_TYPE_FILES[args.cell_type]
 print(f"Loading {fpath}...")
@@ -70,15 +80,14 @@ with h5py.File(fpath, 'r') as f:
 
 knn = sp.csr_matrix((knn_data, knn_idx, knn_indptr), shape=(n_cells, n_cells))
 region_mask = type_mask & (regions == args.region) & (ages >= args.min_age)
-louvain_clusters = sorted(np.unique(louvain[region_mask]), key=lambda x: int(x))
 
-for cl in louvain_clusters:
+for _, row_s in summary.iterrows():
+    cl = str(row_s['louvain'])
     mask = region_mask & (louvain == cl)
     cell_indices = np.where(mask)[0]
     if len(cell_indices) < args.min_cells:
         continue
 
-    # per-animal donor proportions for lochNESS
     animals_in = animal_ids[cell_indices]
     donor_props = {a: (animals_in == a).mean() for a in np.unique(animals_in)}
 
@@ -88,46 +97,36 @@ for cl in louvain_clusters:
     for idx in cell_indices:
         row = knn.getrow(idx)
         neighbor_in_cluster = row.indices[mask[row.indices]]
-        k = len(neighbor_in_cluster)
-
-        if k == 0:
+        if len(neighbor_in_cluster) == 0:
             lochness_scores.append(np.nan)
             age_dev_scores.append(np.nan)
             continue
-
-        # lochNESS
         donor = animal_ids[idx]
         obs_frac = (animal_ids[neighbor_in_cluster] == donor).mean()
         exp_frac = donor_props[donor]
         lochness_scores.append(obs_frac / exp_frac if exp_frac > 0 else np.nan)
-
-        # age deviation: |own age - mean neighbor age|
-        mean_neighbor_age = ages[neighbor_in_cluster].mean()
-        age_dev_scores.append(abs(ages[idx] - mean_neighbor_age))
+        age_dev_scores.append(abs(ages[idx] - ages[neighbor_in_cluster].mean()))
 
     lochness_scores = np.array(lochness_scores)
     age_dev_scores  = np.array(age_dev_scores)
-    umap_sub = umap[cell_indices]
+    umap_sub        = umap[cell_indices]
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-    # lochNESS
     vmax_l = np.nanpercentile(lochness_scores, 95)
     sc0 = axes[0].scatter(umap_sub[:, 0], umap_sub[:, 1],
                           c=lochness_scores, cmap='YlOrRd', s=1, alpha=0.5,
                           vmin=0, vmax=vmax_l)
     plt.colorbar(sc0, ax=axes[0], label='lochNESS')
-    axes[0].set_title('Within-donor neighbor enrichment\n(lochNESS)')
+    axes[0].set_title('Within-donor enrichment (lochNESS)')
 
-    # age deviation
     vmax_a = np.nanpercentile(age_dev_scores, 95)
     sc1 = axes[1].scatter(umap_sub[:, 0], umap_sub[:, 1],
                           c=age_dev_scores, cmap='viridis_r', s=1, alpha=0.5,
                           vmin=0, vmax=vmax_a)
     plt.colorbar(sc1, ax=axes[1], label='|own age - mean neighbor age|')
-    axes[1].set_title('Age-based neighbor deviation')
+    axes[1].set_title('Age deviation of neighbors')
 
-    # cell age
     sc2 = axes[2].scatter(umap_sub[:, 0], umap_sub[:, 1],
                           c=ages[cell_indices], cmap='plasma', s=1, alpha=0.5)
     plt.colorbar(sc2, ax=axes[2], label='Age')

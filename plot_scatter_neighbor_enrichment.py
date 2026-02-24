@@ -1,16 +1,19 @@
 """
-viz_scatter_neighbor_enrichment.py
+plot_scatter_neighbor_enrichment.py
 
-For a given cell type and region, plots per-animal scatter:
-    x = mean lochNESS score
-    y = mean age deviation of neighbors (|own age - mean neighbor age|)
-colored by animal age. One plot per louvain cluster.
+Reads per-cell data recomputed from h5ad and plots per-animal scatter:
+    x = mean lochNESS, y = mean age deviation
+colored by animal age, one plot per louvain.
+
+Note: requires recomputing per-cell values from h5ad since we only
+save per-animal aggregates in the summary CSV.
 
 Usage:
-    python viz_scatter_neighbor_enrichment.py --cell_type GABAergic-neurons --region HIP
+    python plot_scatter_neighbor_enrichment.py --cell_type GABAergic-neurons --region HIP
 """
 
 import argparse
+import os
 import h5py
 import numpy as np
 import pandas as pd
@@ -36,19 +39,27 @@ FILTER_MAP = {
 DATA_DIR = '/data/CEM/smacklab/U01/'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--cell_type', default='GABAergic-neurons', choices=CELL_TYPE_FILES.keys())
-parser.add_argument('--region',    default='HIP')
+parser.add_argument('--cell_type', required=True, choices=CELL_TYPE_FILES.keys())
+parser.add_argument('--region',    required=True)
 parser.add_argument('--min_cells', type=int,   default=100)
 parser.add_argument('--min_age',   type=float, default=1.0)
+parser.add_argument('--indir',     default='/scratch/easmit31/factor_analysis/neighbor_enrichment/')
 parser.add_argument('--outdir',    default='/scratch/easmit31/factor_analysis/neighbor_enrichment/')
 args = parser.parse_args()
 
-import os
 os.makedirs(args.outdir, exist_ok=True)
 
 def decode_categorical(grp):
+    """Decode h5py categorical (categories + codes) to numpy string array."""
     categories = np.array([x.decode() if isinstance(x, bytes) else str(x) for x in grp['categories'][:]])
     return categories[grp['codes'][:]]
+
+# load summary to know which louvains to plot
+summary = pd.read_csv(f'{args.indir}{args.cell_type}_neighbor_enrichment_summary.csv')
+summary = summary[summary['region'] == args.region]
+if summary.empty:
+    print(f"No results for {args.cell_type} {args.region}")
+    exit()
 
 fpath = DATA_DIR + CELL_TYPE_FILES[args.cell_type]
 print(f"Loading {fpath}...")
@@ -70,9 +81,9 @@ with h5py.File(fpath, 'r') as f:
 
 knn = sp.csr_matrix((knn_data, knn_idx, knn_indptr), shape=(n_cells, n_cells))
 region_mask = type_mask & (regions == args.region) & (ages >= args.min_age)
-louvain_clusters = sorted(np.unique(louvain[region_mask]), key=lambda x: int(x))
 
-for cl in louvain_clusters:
+for _, row_s in summary.iterrows():
+    cl = str(row_s['louvain'])
     mask = region_mask & (louvain == cl)
     cell_indices = np.where(mask)[0]
     if len(cell_indices) < args.min_cells:
@@ -97,29 +108,29 @@ for cl in louvain_clusters:
 
     df = pd.DataFrame(rows)
     agg = df.groupby(['animal_id', 'age'])[['lochness', 'age_dev']].mean().reset_index()
-
     if len(agg) < 5:
         continue
 
-    norm = plt.Normalize(agg['age'].min(), agg['age'].max())
-    colors = cm.plasma(norm(agg['age'].values))
+    _, _, r_l, p_l, _ = stats.linregress(agg['age'], agg['lochness'])
+    _, _, r_a, p_a, _ = stats.linregress(agg['age'], agg['age_dev'])
 
-    fig, ax = plt.subplots(figsize=(6, 5))
-    sc = ax.scatter(agg['lochness'], agg['age_dev'], c=agg['age'],
-                    cmap='plasma', s=50, edgecolors='black', linewidths=0.3)
-    plt.colorbar(sc, ax=ax, label='Age')
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
-    # regression lines
-    for x_col, y_col, color, label in [
-        ('age', 'lochness', 'darkorange', 'lochNESS~age'),
-        ('age', 'age_dev',  'steelblue',  'age_dev~age'),
+    for ax, x_col, y_col, r, p, xlabel, ylabel in [
+        (axes[0], 'age', 'lochness', r_l, p_l, 'Age', 'Mean lochNESS'),
+        (axes[1], 'age', 'age_dev',  r_a, p_a, 'Age', 'Mean |own age - neighbor age|'),
     ]:
-        sl, ic, r, p, _ = stats.linregress(agg[x_col], agg[y_col])
-        print(f"  L{cl} {label}: r={r:.2f}, p={p:.3f}")
+        sc = ax.scatter(agg[x_col], agg[y_col], c=agg['age'],
+                        cmap='plasma', s=50, edgecolors='black', linewidths=0.3)
+        plt.colorbar(sc, ax=ax, label='Age')
+        sl, ic, _, _, _ = stats.linregress(agg[x_col], agg[y_col])
+        x_line = np.linspace(agg[x_col].min(), agg[x_col].max(), 100)
+        ax.plot(x_line, sl * x_line + ic, color='firebrick', lw=1.5)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(f'r={r:.2f}, p={p:.3f}, n={len(agg)} animals')
 
-    ax.set_xlabel('Mean lochNESS (within-donor enrichment)')
-    ax.set_ylabel('Mean |own age - neighbor age|')
-    ax.set_title(f'{args.cell_type} {args.region} louvain {cl}\n(n={len(agg)} animals)')
+    fig.suptitle(f'{args.cell_type} {args.region} louvain {cl}', fontsize=10)
     plt.tight_layout()
     out = f'{args.outdir}{args.cell_type}_{args.region}_louvain{cl}_scatter_neighbor_enrichment.png'
     plt.savefig(out, dpi=150)
