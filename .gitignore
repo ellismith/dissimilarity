@@ -1,18 +1,20 @@
-# Data files
-*.h5ad
+*.png
 *.npy
-*.csv
-
-# Output files
-dissimilarity_matrices/
+*.log
 logs/
-
-# Python
+archive/
+png_files/
+plots/
+csvs/
+csv_files/
+summaries/
+pc_centroid_outputs_min100/
+pc_centroid_outputs_min2/
+population_centroid_outputs/
+centroid_heatmaps/
+subtype_variability/
+dissimilarity/
+neighbor_enrichment/
+centroid_plots_by_animal/
 __pycache__/
 *.pyc
-*.pyo
-.ipynb_checkpoints/
-
-# System
-.DS_Store
-*~
