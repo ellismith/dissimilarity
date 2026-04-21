@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Transcriptional Individuality — Aging Primate Brain</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; color: #222; }
+  h1 { font-size: 1.6em; font-weight: 500; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+  h2 { font-size: 1.2em; font-weight: 500; margin-top: 2em; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  nav { margin: 1em 0; font-size: 0.9em; }
+  nav a { margin-right: 16px; color: #0066cc; text-decoration: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; margin: 1em 0; }
+  .grid-wide { display: grid; grid-template-columns: 1fr; gap: 20px; margin: 1em 0; }
+  .fig { border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa; }
+  .fig img { width: 100%; height: auto; border-radius: 4px; cursor: zoom-in; }
+  .fig .caption { font-size: 0.85em; font-weight: 500; margin: 6px 0 2px; }
+  .fig .path { font-size: 0.75em; color: #888; font-family: monospace; margin: 0; }
+  .meta { font-size: 0.85em; color: #666; margin-bottom: 1em; }
+  footer { margin-top: 3em; font-size: 0.8em; color: #999; border-top: 1px solid #eee; padding-top: 8px; }
+</style>
+</head>
+<body>
+<h1>Transcriptional Individuality — Aging Primate Brain</h1>
+<p class="meta">Last updated: 2026-04-21 15:29 &nbsp;|&nbsp; 12 cell types · 11 brain regions · ~55 animals</p>
+
+<nav>
+  <a href="#lochness">lochNESS</a>
+  <a href="#centroid_scatter">Centroid vs lochNESS</a>
+  <a href="#centroid_heatmaps">Centroid Heatmaps</a>
+  <a href="#embedding">PCA Embedding QC</a>
+</nav>
+
+<h2 id="lochness">lochNESS — Continuous Age Neighborhood Clustering</h2>
+<p style="font-size:0.9em">For each cell, mean age of k=10 nearest PCA neighbors. Pearson r between cell age and neighbor mean age, tested against permuted null. Positive r = old cells cluster with old cells.</p>
+<div class="grid-wide">
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/lochness_heatmap_celltype_region.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/lochness_heatmap_celltype_region.png" alt="lochNESS summary — cell type × region">
+  </a>
+  <p class="caption">lochNESS summary — cell type × region</p>
+  <p class='path'>lochness_heatmap_celltype_region.png</p>
+</div>
+
+</div>
+<h2 id="centroid_scatter">Centroid Distance vs lochNESS</h2>
+<p style="font-size:0.9em">Per louvain × region: centroid distance age r vs lochNESS age r. Tests whether the two metrics are correlated or dissociated.</p>
+<div class="grid-wide">
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_vs_lochness_scatter.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_vs_lochness_scatter.png" alt="centroid distance vs lochNESS age correlations">
+  </a>
+  <p class="caption">centroid distance vs lochNESS age correlations</p>
+  <p class='path'>centroid_vs_lochness_scatter.png</p>
+</div>
+
+</div>
+<h2 id="centroid_heatmaps">Centroid Distance Heatmaps</h2>
+<p style="font-size:0.9em">Pearson r (louvain × region) for within-animal and population centroid distance ~ age. Left = within-animal spread, right = population drift.</p>
+<div class="grid">
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/GABAergic-neurons_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/GABAergic-neurons_centroid_heatmap_mean.png" alt="GABAergic-neurons — centroid distance ~ age">
+  </a>
+  <p class="caption">GABAergic-neurons — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/GABAergic-neurons_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/glutamatergic-neurons_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/glutamatergic-neurons_centroid_heatmap_mean.png" alt="glutamatergic-neurons — centroid distance ~ age">
+  </a>
+  <p class="caption">glutamatergic-neurons — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/glutamatergic-neurons_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/astrocytes_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/astrocytes_centroid_heatmap_mean.png" alt="astrocytes — centroid distance ~ age">
+  </a>
+  <p class="caption">astrocytes — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/astrocytes_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/microglia_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/microglia_centroid_heatmap_mean.png" alt="microglia — centroid distance ~ age">
+  </a>
+  <p class="caption">microglia — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/microglia_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/basket-cells_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/basket-cells_centroid_heatmap_mean.png" alt="basket-cells — centroid distance ~ age">
+  </a>
+  <p class="caption">basket-cells — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/basket-cells_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/medium-spiny-neurons_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/medium-spiny-neurons_centroid_heatmap_mean.png" alt="medium-spiny-neurons — centroid distance ~ age">
+  </a>
+  <p class="caption">medium-spiny-neurons — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/medium-spiny-neurons_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/cerebellar-neurons_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/cerebellar-neurons_centroid_heatmap_mean.png" alt="cerebellar-neurons — centroid distance ~ age">
+  </a>
+  <p class="caption">cerebellar-neurons — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/cerebellar-neurons_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/ependymal-cells_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/ependymal-cells_centroid_heatmap_mean.png" alt="ependymal-cells — centroid distance ~ age">
+  </a>
+  <p class="caption">ependymal-cells — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/ependymal-cells_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/midbrain-neurons_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/midbrain-neurons_centroid_heatmap_mean.png" alt="midbrain-neurons — centroid distance ~ age">
+  </a>
+  <p class="caption">midbrain-neurons — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/midbrain-neurons_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/oligodendrocytes_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/oligodendrocytes_centroid_heatmap_mean.png" alt="oligodendrocytes — centroid distance ~ age">
+  </a>
+  <p class="caption">oligodendrocytes — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/oligodendrocytes_centroid_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/vascular-cells_centroid_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/centroid_heatmaps/vascular-cells_centroid_heatmap_mean.png" alt="vascular-cells — centroid distance ~ age">
+  </a>
+  <p class="caption">vascular-cells — centroid distance ~ age</p>
+  <p class='path'>centroid_heatmaps/vascular-cells_centroid_heatmap_mean.png</p>
+</div>
+
+</div>
+<h2 id="embedding">PCA Embedding QC</h2>
+<p style="font-size:0.9em">Log10 total cells, n louvains, PC1 std, and mean L2 norm per cell type × region.</p>
+<div class="grid-wide">
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/pca_embedding_summary.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/pca_embedding_summary.png" alt="PCA embedding summary">
+  </a>
+  <p class="caption">PCA embedding summary</p>
+  <p class='path'>pca_embedding_summary.png</p>
+</div>
+
+</div>
+
+<footer>Generated by generate_gallery.py &nbsp;|&nbsp; easmit31 / dissimilarity</footer>
+</body>
+</html>
