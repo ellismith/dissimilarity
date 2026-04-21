@@ -39,7 +39,7 @@ echo "Cell type: $CELL_TYPE"
 echo "Region:    $REGION"
 echo "=========================================="
 
-python /scratch/easmit31/factor_analysis/compute_lochness_pca.py \
+python /scratch/easmit31/factor_analysis/scripts/compute_lochness_pca.py \
     --cell-type $CELL_TYPE \
     --region $REGION
 

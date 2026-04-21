@@ -1,7 +1,8 @@
 """
-Aggregate lochNESS Age Enrichment Results
+Aggregate lochNESS Age Enrichment Results (continuous age version)
 
-Summarizes lochNESS scores across louvain clusters per cell type × region.
+Summarizes neighborhood age enrichment scores across louvain clusters
+per cell type × region.
 
 Usage:
     python summarize_lochness_results.py \
@@ -21,6 +22,7 @@ import glob
 import matplotlib.pyplot as plt
 import os
 import argparse
+from scipy import stats
 
 def summarize_lochness_results(results_dir, cell_type, region):
 
@@ -40,28 +42,31 @@ def summarize_lochness_results(results_dir, cell_type, region):
         louvain  = basename.split('_')[0].replace('louvain', '')
         df       = pd.read_csv(f)
 
-        # per-animal mean lochNESS vs age regression
-        animal_agg = df.groupby(['animal_id', 'age'])['lochness_score'].mean().reset_index()
-        from scipy import stats
+        # per-animal mean neighbor age vs animal age regression
+        animal_agg = df.groupby(['animal_id', 'age'])['neighbor_mean_age'].mean().reset_index()
         if len(animal_agg) >= 5:
-            r, p = stats.pearsonr(animal_agg['age'], animal_agg['lochness_score'])
+            r_age, p_age = stats.pearsonr(animal_agg['age'], animal_agg['neighbor_mean_age'])
         else:
-            r, p = np.nan, np.nan
+            r_age, p_age = np.nan, np.nan
+
+        # per-animal mean zscore vs age
+        animal_agg_z = df.groupby(['animal_id', 'age'])['neighbor_age_zscore'].mean().reset_index()
+        if len(animal_agg_z) >= 5:
+            r_zscore, p_zscore = stats.pearsonr(animal_agg_z['age'], animal_agg_z['neighbor_age_zscore'])
+        else:
+            r_zscore, p_zscore = np.nan, np.nan
 
         summaries.append({
-            'louvain':          louvain,
-            'n_cells':          len(df),
-            'n_animals':        df['animal_id'].nunique(),
-            'mean_lochness':    df['lochness_score'].mean(),
-            'median_lochness':  df['lochness_score'].median(),
-            'std_lochness':     df['lochness_score'].std(),
-            'pct_old_enriched': (df['lochness_category'] == 'old_enriched').sum() / len(df) * 100,
-            'pct_young_enriched': (df['lochness_category'] == 'young_enriched').sum() / len(df) * 100,
-            'pct_neutral':      (df['lochness_category'] == 'neutral').sum() / len(df) * 100,
-            'n_significant':    df['lochness_significant'].sum(),
-            'pct_significant':  df['lochness_significant'].sum() / len(df) * 100,
-            'r_age':            r,
-            'p_age':            p,
+            'louvain':              louvain,
+            'n_cells':              len(df),
+            'n_animals':            df['animal_id'].nunique(),
+            'mean_neighbor_age':    df['neighbor_mean_age'].mean(),
+            'mean_zscore':          df['neighbor_age_zscore'].mean(),
+            'std_zscore':           df['neighbor_age_zscore'].std(),
+            'r_age':                round(r_age, 4) if not np.isnan(r_age) else np.nan,
+            'p_age':                round(p_age, 4) if not np.isnan(p_age) else np.nan,
+            'r_zscore':             round(r_zscore, 4) if not np.isnan(r_zscore) else np.nan,
+            'p_zscore':             round(p_zscore, 4) if not np.isnan(p_zscore) else np.nan,
         })
 
     summary_df = pd.DataFrame(summaries)
@@ -73,12 +78,13 @@ def summarize_lochness_results(results_dir, cell_type, region):
     print(f"{'='*70}")
     print(f"  Louvain clusters: {len(summary_df)}")
     print(f"  Total cells: {summary_df['n_cells'].sum():,}")
-    print(f"  Mean lochNESS: {summary_df['mean_lochness'].mean():.3f} ± {summary_df['mean_lochness'].std():.3f}")
-    print(f"  Old-enriched: {summary_df['pct_old_enriched'].mean():.1f}%")
-    print(f"  Young-enriched: {summary_df['pct_young_enriched'].mean():.1f}%")
-    print(f"  Significant: {summary_df['pct_significant'].mean():.1f}%")
-    print(f"\nTop 5 by % significant:")
-    print(summary_df.nlargest(5, 'pct_significant')[['louvain', 'n_cells', 'pct_significant', 'mean_lochness', 'r_age', 'p_age']].to_string(index=False))
+    print(f"  Mean neighbor age zscore: {summary_df['mean_zscore'].mean():.3f} ± {summary_df['mean_zscore'].std():.3f}")
+    n_sig = (summary_df['p_age'] < 0.05).sum()
+    print(f"  Louvains with sig age r (p<0.05): {n_sig}/{len(summary_df)}")
+    print(f"\nTop 5 by |r_age|:")
+    print(summary_df.dropna(subset=['r_age']).reindex(
+        summary_df.dropna(subset=['r_age'])['r_age'].abs().sort_values(ascending=False).index
+    )[['louvain','n_cells','r_age','p_age','r_zscore','p_zscore']].head(5).to_string(index=False))
 
     out_dir = os.path.join(results_dir, cell_type)
     os.makedirs(out_dir, exist_ok=True)
@@ -93,46 +99,46 @@ def summarize_lochness_results(results_dir, cell_type, region):
     x = np.arange(len(summary_df))
 
     ax = axes[0, 0]
-    colors = ['#E24B4A' if v > 0 else '#378ADD' for v in summary_df['mean_lochness']]
-    ax.bar(x, summary_df['mean_lochness'], color=colors, edgecolor='black', alpha=0.8)
+    colors = ['#E24B4A' if v > 0 else '#378ADD' for v in summary_df['r_age']]
+    ax.bar(x, summary_df['r_age'], color=colors, edgecolor='black', alpha=0.8)
     ax.axhline(0, color='black', linestyle='--', alpha=0.5)
     ax.set_xticks(x); ax.set_xticklabels(louv_labels, rotation=45)
-    ax.set_xlabel('louvain'); ax.set_ylabel('mean lochNESS')
-    ax.set_title('mean lochNESS by cluster')
+    ax.set_xlabel('louvain'); ax.set_ylabel('Pearson r (neighbor age vs cell age)')
+    ax.set_title('age clustering r by cluster')
 
     ax = axes[0, 1]
-    ax.bar(x, summary_df['pct_significant'], edgecolor='black', alpha=0.8)
+    colors2 = ['#E24B4A' if v > 0 else '#378ADD' for v in summary_df['mean_zscore']]
+    ax.bar(x, summary_df['mean_zscore'], color=colors2, edgecolor='black', alpha=0.8)
+    ax.axhline(0, color='black', linestyle='--', alpha=0.5)
     ax.set_xticks(x); ax.set_xticklabels(louv_labels, rotation=45)
-    ax.set_xlabel('louvain'); ax.set_ylabel('% significant cells')
-    ax.set_title('significant age enrichment by cluster')
+    ax.set_xlabel('louvain'); ax.set_ylabel('mean neighbor age z-score')
+    ax.set_title('mean z-score by cluster')
 
     ax = axes[1, 0]
-    ax.bar(x, summary_df['pct_young_enriched'], label='young-enriched', color='#378ADD', edgecolor='black')
-    ax.bar(x, summary_df['pct_neutral'], bottom=summary_df['pct_young_enriched'],
-           label='neutral', color='#888780', edgecolor='black')
-    ax.bar(x, summary_df['pct_old_enriched'],
-           bottom=summary_df['pct_young_enriched'] + summary_df['pct_neutral'],
-           label='old-enriched', color='#E24B4A', edgecolor='black')
-    ax.set_xticks(x); ax.set_xticklabels(louv_labels, rotation=45)
-    ax.set_xlabel('louvain'); ax.set_ylabel('% cells')
-    ax.set_title('category distribution')
+    sig_mask = summary_df['p_age'] < 0.05
+    ax.scatter(summary_df.loc[~sig_mask, 'r_age'],
+               summary_df.loc[~sig_mask, 'mean_zscore'],
+               s=80, edgecolor='black', alpha=0.6, color='gray', label='n.s.')
+    ax.scatter(summary_df.loc[sig_mask, 'r_age'],
+               summary_df.loc[sig_mask, 'mean_zscore'],
+               s=80, edgecolor='black', alpha=0.9, color='#E24B4A', label='p<0.05')
+    for _, row in summary_df.iterrows():
+        ax.annotate(row['louvain'], (row['r_age'], row['mean_zscore']), fontsize=7)
+    ax.axhline(0, color='black', linestyle='--', alpha=0.3)
+    ax.axvline(0, color='black', linestyle='--', alpha=0.3)
+    ax.set_xlabel('r_age'); ax.set_ylabel('mean z-score')
+    ax.set_title('r_age vs mean z-score')
     ax.legend(fontsize=8)
 
     ax = axes[1, 1]
-    sig_mask = summary_df['p_age'] < 0.05
-    ax.scatter(summary_df.loc[~sig_mask, 'mean_lochness'],
-               summary_df.loc[~sig_mask, 'pct_significant'],
-               s=80, edgecolor='black', alpha=0.6, color='gray', label='n.s.')
-    ax.scatter(summary_df.loc[sig_mask, 'mean_lochness'],
-               summary_df.loc[sig_mask, 'pct_significant'],
-               s=80, edgecolor='black', alpha=0.9, color='#E24B4A', label='p<0.05')
+    ax.scatter(summary_df['n_cells'], summary_df['r_age'].abs(),
+               s=80, edgecolor='black', alpha=0.6)
     for _, row in summary_df.iterrows():
-        ax.annotate(row['louvain'], (row['mean_lochness'], row['pct_significant']), fontsize=7)
-    ax.set_xlabel('mean lochNESS'); ax.set_ylabel('% significant')
-    ax.set_title('mean lochNESS vs % significant')
-    ax.legend(fontsize=8)
+        ax.annotate(row['louvain'], (row['n_cells'], abs(row['r_age'])), fontsize=7)
+    ax.set_xlabel('n cells'); ax.set_ylabel('|r_age|')
+    ax.set_title('cell count vs effect size')
 
-    plt.suptitle(f'lochNESS summary: {cell_type}, {region}')
+    plt.suptitle(f'lochNESS summary (continuous age): {cell_type}, {region}')
     plt.tight_layout()
     plot_file = os.path.join(out_dir, f'lochness_summary_{region}.png')
     plt.savefig(plot_file, dpi=150, bbox_inches='tight')
