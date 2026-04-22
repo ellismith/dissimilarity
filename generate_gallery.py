@@ -95,14 +95,19 @@ for ct in CELL_TYPES:
         ))
 lines.append('</div>')
 
-# embedding QC
-lines.append('<h2 id="embedding">PCA Embedding QC</h2>')
-lines.append('<p style="font-size:0.9em">Log10 total cells, n louvains, PC1 std, and mean L2 norm per cell type × region.</p>')
+# centroid summary heatmaps
+lines.append('<h2 id="centroid_summary">Centroid Distance Summary</h2>')
+lines.append('<p style="font-size:0.9em">Mean Pearson r (centroid distance ~ age) collapsed across louvains, per cell type × region. Left panel = mean r, right = % louvains significant (within-CT FDR q&lt;0.05).</p>')
 lines.append('<div class="grid-wide">')
 lines.append(img_block(
-    f"{BASE_URL}/img/pca_embedding_summary.png",
-    "PCA embedding summary",
-    "pca_embedding_summary.png"
+    f"{BASE_URL}/img/within_centroid_summary_heatmap_mean.png",
+    "Within-animal centroid distance ~ age (summary)",
+    "within_centroid_summary_heatmap_mean.png"
+))
+lines.append(img_block(
+    f"{BASE_URL}/img/population_centroid_summary_heatmap_mean.png",
+    "Population centroid distance ~ age (summary)",
+    "population_centroid_summary_heatmap_mean.png"
 ))
 lines.append('</div>')
 

@@ -21,7 +21,7 @@
 </head>
 <body>
 <h1>Transcriptional Individuality — Aging Primate Brain</h1>
-<p class="meta">Last updated: 2026-04-21 15:29 &nbsp;|&nbsp; 12 cell types · 11 brain regions · ~55 animals</p>
+<p class="meta">Last updated: 2026-04-22 06:44 &nbsp;|&nbsp; 12 cell types · 11 brain regions · ~55 animals</p>
 
 <nav>
   <a href="#lochness">lochNESS</a>
@@ -159,16 +159,25 @@
 </div>
 
 </div>
-<h2 id="embedding">PCA Embedding QC</h2>
-<p style="font-size:0.9em">Log10 total cells, n louvains, PC1 std, and mean L2 norm per cell type × region.</p>
+<h2 id="centroid_summary">Centroid Distance Summary</h2>
+<p style="font-size:0.9em">Mean Pearson r (centroid distance ~ age) collapsed across louvains, per cell type × region. Left panel = mean r, right = % louvains significant (within-CT FDR q&lt;0.05).</p>
 <div class="grid-wide">
 
 <div class="fig">
-  <a href="https://ellismith.github.io/dissimilarity/img/pca_embedding_summary.png" target="_blank">
-    <img src="https://ellismith.github.io/dissimilarity/img/pca_embedding_summary.png" alt="PCA embedding summary">
+  <a href="https://ellismith.github.io/dissimilarity/img/within_centroid_summary_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/within_centroid_summary_heatmap_mean.png" alt="Within-animal centroid distance ~ age (summary)">
   </a>
-  <p class="caption">PCA embedding summary</p>
-  <p class='path'>pca_embedding_summary.png</p>
+  <p class="caption">Within-animal centroid distance ~ age (summary)</p>
+  <p class='path'>within_centroid_summary_heatmap_mean.png</p>
+</div>
+
+
+<div class="fig">
+  <a href="https://ellismith.github.io/dissimilarity/img/population_centroid_summary_heatmap_mean.png" target="_blank">
+    <img src="https://ellismith.github.io/dissimilarity/img/population_centroid_summary_heatmap_mean.png" alt="Population centroid distance ~ age (summary)">
+  </a>
+  <p class="caption">Population centroid distance ~ age (summary)</p>
+  <p class='path'>population_centroid_summary_heatmap_mean.png</p>
 </div>
 
 </div>
