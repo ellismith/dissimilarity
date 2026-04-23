@@ -88,6 +88,11 @@ for cl in louvain_clusters:
                          'r_mean': round(r_m, 4), 'p_mean': round(p_m, 4),
                          'r_var':  round(r_v, 4), 'p_var':  round(p_v, 4)})
 
+    # save per-animal distances
+    pa_df = df[['animal_id', 'age', 'n_cells', 'mean_dist', 'var_dist']].copy()
+    pa_df['louvain'] = cl
+    pa_df.to_csv(os.path.join(args.output_dir, f'{args.cell_type}_{args.region}_louvain{cl}_per_animal.csv'), index=False)
+
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     for ax, col, slope, intercept, r, p, ylabel in [
         (axes[0], 'mean_dist', slope_m, intercept_m, r_m, p_m, 'Mean dist to animal centroid'),

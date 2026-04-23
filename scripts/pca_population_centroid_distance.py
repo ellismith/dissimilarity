@@ -19,8 +19,7 @@ parser.add_argument('--n-pcs',              type=int,   default=50)
 parser.add_argument('--min-cells',          type=int,   default=100)
 parser.add_argument('--min-age',            type=float, default=1.0)
 parser.add_argument('--min-animals',        type=int,   default=5)
-parser.add_argument('--cell-class-filter',  default=None,
-                    help='Filter cells by cell_class_assign value (e.g. "oligodendrocytes")')
+parser.add_argument('--cell-class-filter',  default=None)
 args = parser.parse_args()
 
 os.makedirs(args.output_dir, exist_ok=True)
@@ -28,10 +27,6 @@ os.makedirs(args.output_dir, exist_ok=True)
 def decode_categorical(grp):
     categories = np.array([x.decode() if isinstance(x, bytes) else str(x) for x in grp['categories'][:]])
     return categories[grp['codes'][:]]
-
-def decode_col(grp):
-    vals = grp[:]
-    return np.array([x.decode() if isinstance(x, bytes) else str(x) for x in vals])
 
 print(f"Loading {args.h5ad}...")
 with h5py.File(args.h5ad, 'r') as f:
@@ -58,10 +53,11 @@ summary_rows = []
 for cl in louvain_clusters:
     mask = region_mask & (louvain == cl)
     if mask.sum() < args.min_cells:
-        print(f"  Skipping louvain {cl}: only {mask.sum()} cells")
         continue
 
-    idxs         = np.where(mask)[0]
+    idxs = np.where(mask)[0]
+
+    # population centroid — mean across ALL cells in this louvain x region
     pop_centroid = X_pca[idxs].mean(axis=0)
 
     rows = []
@@ -76,7 +72,6 @@ for cl in louvain_clusters:
 
     df = pd.DataFrame(rows).sort_values('age')
     if len(df) < args.min_animals:
-        print(f"  Skipping louvain {cl}: only {len(df)} animals")
         continue
 
     df_var = df.dropna(subset=['var_dist'])
@@ -84,8 +79,14 @@ for cl in louvain_clusters:
     slope_v, intercept_v, r_v, p_v, _ = stats.linregress(df_var['age'], df_var['var_dist'])
 
     summary_rows.append({'louvain': cl, 'n_cells': mask.sum(), 'n_animals': len(df),
-                         'r_mean_dist': r_m, 'p_mean_dist': p_m,
-                         'r_var_dist':  r_v, 'p_var_dist':  p_v})
+                         'r_mean_dist': round(r_m, 4), 'p_mean_dist': round(p_m, 4),
+                         'r_var_dist':  round(r_v, 4), 'p_var_dist':  round(p_v, 4)})
+
+    # save per-animal distances for downstream permutation testing
+    pa_df = df[['animal_id', 'age', 'n_cells', 'mean_dist', 'var_dist']].copy()
+    pa_df['louvain'] = cl
+    pa_df.to_csv(os.path.join(args.output_dir,
+                 f'{args.cell_type}_{args.region}_louvain{cl}_per_animal.csv'), index=False)
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     for ax, col, slope, intercept, r, p, ylabel in [
@@ -99,15 +100,17 @@ for cl in louvain_clusters:
         ax.set_xlabel('Age'); ax.set_ylabel(ylabel)
         ax.set_title(f'{args.cell_type} {args.region} louvain {cl}\nr={r:.2f}, p={p:.3f}, n={len(agg)}')
     plt.tight_layout()
-    out = os.path.join(args.output_dir, f'{args.cell_type}_{args.region}_louvain{cl}_population_centroid_mean_var.png')
+    out = os.path.join(args.output_dir,
+                       f'{args.cell_type}_{args.region}_louvain{cl}_population_centroid_mean_var.png')
     plt.savefig(out, dpi=150); plt.close()
     print(f"  Saved louvain {cl} (n_cells={mask.sum()}, n_animals={len(df)}, mean_r={r_m:.3f} p={p_m:.3f})")
 
 if summary_rows:
     summary_df = pd.DataFrame(summary_rows).sort_values('louvain')
-    csv_out    = os.path.join(args.output_dir, f'{args.cell_type}_{args.region}_population_centroid_summary.csv')
+    csv_out    = os.path.join(args.output_dir,
+                              f'{args.cell_type}_{args.region}_population_centroid_summary.csv')
     summary_df.to_csv(csv_out, index=False)
-    print(f"\nSummary CSV saved to {csv_out}")
+    print(f"\nSummary saved: {csv_out}")
 else:
     print("No louvains passed filters.")
 
